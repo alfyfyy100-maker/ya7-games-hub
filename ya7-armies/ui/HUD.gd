@@ -84,7 +84,7 @@ func _build_layout() -> void:
 	bottom.add_theme_constant_override("separation", 10)
 	bottom_panel.add_child(bottom)
 	info_label = _label("", 16)
-	info_label.custom_minimum_size.x = 200
+	info_label.custom_minimum_size.x = 230
 	info_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	info_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	bottom.add_child(info_label)
@@ -268,9 +268,9 @@ func _refresh_info() -> void:
 		if units.size() == 1:
 			var e: SimEntity = GameState.get_entity(units[0])
 			var d := e.unit_def()
-			info_label.text = "%s\n%d / %d" % [d.display_name, int(e.hp), int(e.max_hp)]
+			info_label.text = "%s  %d/%d\nانقر الأرض للتحرك، أو عدوًا للهجوم" % [d.display_name, int(e.hp), int(e.max_hp)]
 		else:
-			info_label.text = "%d وحدات مختارة" % units.size()
+			info_label.text = "%d وحدات مختارة\nانقر الأرض للتحرك، أو عدوًا للهجوم" % units.size()
 		return
 	info_label.text = "قائمة البناء\nانقر وحدة/مبنى لاختياره"
 

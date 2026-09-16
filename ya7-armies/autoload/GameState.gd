@@ -313,9 +313,9 @@ func issue_command(ids: Array, cmd: Dictionary) -> void:
 		match String(cmd.get("type", "")):
 			"stop":
 				e.set_order({})
-			"move":
-				moving_ids.append(id)
-			"attack_move":
+			"move", "attack_move":
+				# أمر يدوي للحصّادة يلغي عودتها التلقائية للجمع (تطيع اللاعب)
+				e.data.erase("resource_id")
 				moving_ids.append(id)
 			"attack":
 				var def := e.unit_def()
