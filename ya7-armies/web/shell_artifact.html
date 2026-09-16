@@ -1,0 +1,103 @@
+<title>Ya7 Armies</title>
+<style>
+:root{--ground:#0f1a12;--ink:#f2f5ec;--muted:#a8b8a4;--accent:#7bd36d;--panel:rgba(12,22,14,.86);color-scheme:dark}
+html,body{height:100%;margin:0;padding:0;border:0;background:var(--ground);color:var(--ink);overflow:hidden;touch-action:none;font-family:"Segoe UI",Tahoma,Arial,sans-serif}
+#canvas{display:block;width:100%;height:100%;outline:none;background:#0f1a12}
+#status{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:18px;background:var(--ground);padding-inline:16px;text-align:center}
+#status[hidden]{display:none!important}
+#status h1{font-size:28px;margin:0;letter-spacing:.5px}
+#status p{margin:0;color:var(--muted);font-size:15px;max-width:34ch}
+#status progress{width:min(60%,320px);height:10px;accent-color:var(--accent)}
+#status-notice{display:none;background:#3a1d22;border:1px solid #8a3a44;border-radius:8px;padding:12px 16px;color:#f4dada;max-width:60ch;direction:rtl;white-space:pre-line}
+#help{position:absolute;left:12px;right:12px;bottom:calc(126px + env(safe-area-inset-bottom,0px));margin:0 auto;max-width:640px;background:var(--panel);color:var(--ink);border:1px solid rgba(123,211,109,.35);border-radius:10px;padding:10px 14px;font-size:14px;line-height:1.6;direction:rtl;text-align:right;pointer-events:none}
+#help[hidden]{display:none!important}
+#help b{color:var(--accent)}
+@media (max-width:600px){#help{font-size:12.5px;line-height:1.5}}
+</style>
+<canvas id="canvas" tabindex="0">متصفحك لا يدعم Canvas.</canvas>
+<div id="status">
+  <h1>Ya7 Armies</h1>
+  <p id="status-text">جاري تحميل اللعبة (≈36MB أول مرة)...</p>
+  <progress id="status-progress"></progress>
+  <div id="status-notice"></div>
+</div>
+<div id="help" hidden>
+  <b>التحكم:</b> اسحب لتحريك الكاميرا • إصبعان: زوم ولفّ • انقر وحدة/مبنى لاختياره • مع وحدات مختارة انقر الأرض/العدو/الموارد لإصدار أمر •
+  زر «سحب: تحريك/تحديد» يبدّل السحب إلى مربع تحديد • بالفأرة: زر يمين = أمر، عجلة = زوم، Q/E لفّ.
+</div>
+<script src="index.js"></script>
+<script>
+(function () {
+  const WASM_PARTS = ["index.part00.wasm","index.part01.wasm","index.part02.wasm"];
+  // الاستضافة تخدم امتدادات محددة فقط، لذا حزمة البيانات .pck مخزنة باسم .wasm ويُعاد توجيه طلبها
+  const PCK_URL = "index.pck.wasm";
+  const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":979200,"index.wasm":35376909},"focusCanvas":true,"gdextensionLibs":[]};
+  const statusEl = document.getElementById('status');
+  const textEl = document.getElementById('status-text');
+  const progressEl = document.getElementById('status-progress');
+  const noticeEl = document.getElementById('status-notice');
+  const helpEl = document.getElementById('help');
+
+  function fail(err) {
+    console.error(err);
+    noticeEl.textContent = (err && err.message) ? err.message : String(err);
+    noticeEl.style.display = 'block';
+    progressEl.style.display = 'none';
+    textEl.textContent = 'تعذّر تشغيل اللعبة';
+  }
+
+  // الملف wasm أكبر من حد الملف الواحد للاستضافة، فهو مقسّم إلى أجزاء تُجمَّع هنا
+  // ثم تُعطى للمحرك عبر عنوان blob (يُعاد توجيه طلب index.wasm إليه).
+  async function assembleWasm() {
+    let done = 0;
+    const bufs = await Promise.all(WASM_PARTS.map(async (p) => {
+      const r = await fetch(p, { credentials: 'same-origin' });
+      if (!r.ok) throw new Error('فشل تحميل ' + p + ' (' + r.status + ')');
+      const b = await r.arrayBuffer();
+      done += 1;
+      progressEl.value = done; progressEl.max = WASM_PARTS.length + 1;
+      return b;
+    }));
+    const blob = new Blob(bufs, { type: 'application/wasm' });
+    return URL.createObjectURL(blob);
+  }
+
+  function redirectWasm(url) {
+    const origOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function (method, u, ...rest) {
+      if (typeof u === 'string' && u.endsWith('index.wasm')) u = url;
+      else if (typeof u === 'string' && u.endsWith('index.pck')) u = PCK_URL;
+      return origOpen.call(this, method, u, ...rest);
+    };
+    const origFetch = window.fetch.bind(window);
+    window.fetch = function (u, opts) {
+      if (typeof u === 'string' && u.endsWith('index.wasm')) u = url;
+      else if (typeof u === 'string' && u.endsWith('index.pck')) u = PCK_URL;
+      return origFetch(u, opts);
+    };
+  }
+
+  const missing = Engine.getMissingFeatures({ threads: false });
+  if (missing.length !== 0) {
+    fail(new Error('المتصفح يفتقد:\n' + missing.join('\n')));
+    return;
+  }
+  assembleWasm().then((url) => {
+    redirectWasm(url);
+    textEl.textContent = 'جاري تشغيل المحرك...';
+    const engine = new Engine(GODOT_CONFIG);
+    return engine.startGame({
+      onProgress: function (current, total) {
+        if (current > 0 && total > 0) { progressEl.value = current; progressEl.max = total; }
+      }
+    });
+  }).then(() => {
+    statusEl.hidden = true;
+    helpEl.hidden = false;
+    const hide = () => { helpEl.hidden = true; };
+    setTimeout(hide, 14000);
+    window.addEventListener('pointerdown', hide, { once: true });
+    document.getElementById('canvas').focus();
+  }).catch(fail);
+}());
+</script>
