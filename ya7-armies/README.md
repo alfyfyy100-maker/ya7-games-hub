@@ -18,6 +18,15 @@ Android/iOS ثم الأونلاين.
   xvfb-run -a godot --rendering-driver opengl3 --path . tests/Screenshot.tscn -- /tmp/shots
   ```
 
+## نسخة الويب (GitHub Pages)
+
+الرابط: https://alfyfyy100-maker.github.io/ya7-games-hub/ — يُنشر من الفرع `gh-pages` (بناء Godot Web بدون threads).
+لتحديثه بعد أي تعديل:
+```
+godot --headless --path ya7-armies --export-release "Web" /tmp/web/index.html
+# ثم انسخ محتوى /tmp/web إلى فرع gh-pages وادفعه
+```
+
 ## التحكم
 
 | اللمس | الفأرة/لوحة المفاتيح |
