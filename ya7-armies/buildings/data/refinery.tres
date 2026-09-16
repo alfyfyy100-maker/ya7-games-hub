@@ -17,3 +17,6 @@ producible_units = Array[StringName]([])
 is_refinery = true
 accent_color = Color(0.95, 0.75, 0.2, 1)
 height = 2.4
+model_path = "res://assets/models/kenney/city-industrial/building-c.glb"
+model_fit = 0.9
+team_tint = 0.3

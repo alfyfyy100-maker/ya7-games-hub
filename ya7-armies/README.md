@@ -106,6 +106,21 @@ ya7-armies/
 3. الشكل: اختر `visual_kind` موجودًا، أو أضف فرعًا جديدًا في `MeshFactory.make_unit/make_building`
    (لاحقًا: استبدله بـ `PackedScene` من ملفات glTF).
 
+## الأصول الفنية (CC0)
+
+النماذج ثلاثية الأبعاد من **Kenney** (رخصة CC0 — حرة تمامًا حتى تجاريًا) في `assets/models/kenney/`
+(التفاصيل والملفات في `assets/models/kenney/CREDITS.md`):
+
+- الجندي/الرامي/المهندس: شخصيات Kenney المتحركة (Mini Arena / Mini Characters) — أنيميشن `idle`, `walk`,
+  `sprint`, `holding-right-shoot`, `pick-up`, `die` تُشغَّل تلقائيًا من حالة الوحدة.
+- الحصّادة: `tractor-shovel` (Car Kit). الدبابة: `rover` + برج `turret_single` (Space Kit). المدرّعة: `truck-green`.
+- المقر/الثكنة/المصفاة: City Kit Industrial. مصنع المركبات: `hangar_largeA`. البرج الدفاعي: Tower Defense Kit.
+- الموارد والأشجار والصخور: Tower Defense Kit (الأشجار/الصخور عبر MultiMesh = draw call واحد لكل نوع).
+
+كل نموذج يُقاس تلقائيًا (`ModelLibrary.fit_max/fit_footprint`) ويُلوَّن بلون الفريق (`team_tint`) بمواد
+مشتركة. لتبديل نموذج: غيّر `model_path` في ملف `.tres` فقط. لو كان المسار فارغًا يعود العرض للنموذج البلوكي المؤقت.
+الخط: Cairo (OFL) في `assets/fonts/`.
+
 ## الموبايل
 
 - المعرض `mobile`، بدون ظلال ديناميكية، مواد مشتركة (cache في `MeshFactory`)، أرض بميش واحد،
@@ -125,5 +140,5 @@ ya7-armies/
 ## الخطوات التالية المقترحة
 - تفادي التصادم بين الوحدات (steering/separation) وتجميع تشكيلي أفضل.
 - Fog of war، minimap، أصوات، مؤثرات إطلاق/انفجار.
-- استبدال placeholders بنماذج glTF كرتونية.
+- نماذج مخصصة (glTF) بدل Kenney عند توفر فنان، مع الإبقاء على نفس مسارات `model_path`.
 - حدود سكانية، تكنولوجيا، أنواع موارد إضافية.

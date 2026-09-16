@@ -42,6 +42,19 @@ enum VisualKind { SOLDIER, ARCHER, ENGINEER, TANK, HARVESTER, APC }
 @export var accent_color: Color = Color(0.95, 0.85, 0.3)
 @export var scale: float = 1.0
 
+@export_group("Model (glTF)")
+## مسار نموذج glb/gltf. فارغ = نموذج بلوكي مؤقت من MeshFactory.
+@export_file("*.glb", "*.gltf") var model_path: String = ""
+## أكبر بُعد مستهدف للنموذج بوحدات العالم (0 = بدون قياس تلقائي).
+@export var model_fit_size: float = 0.0
+@export var model_yaw_deg: float = 0.0
+## برج دوّار اختياري يوضع فوق الهيكل (دبابات).
+@export_file("*.glb", "*.gltf") var turret_model_path: String = ""
+@export var turret_fit_size: float = 0.0
+@export var turret_yaw_deg: float = 0.0
+## قوة تلوين النموذج بلون الفريق (0..1).
+@export_range(0.0, 1.0) var team_tint: float = 0.35
+
 
 func has_weapon() -> bool:
 	return damage > 0.0 and attack_range > 0.0

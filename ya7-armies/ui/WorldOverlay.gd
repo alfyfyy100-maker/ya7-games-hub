@@ -63,12 +63,13 @@ func _draw() -> void:
 			continue
 		var top := 1.6
 		var width := 34.0
+		var view = _world.get_view(e.id)
+		if view != null and "visual_height" in view:
+			top = view.visual_height + 0.4
 		if e.is_building():
-			var def := e.building_def()
-			top = def.height + 0.9
 			width = 60.0
 		elif e.is_resource():
-			top = 1.8
+			top = 2.4
 		var sp := cam.unproject_position(e.pos + Vector3(0, top, 0))
 		if cam.is_position_behind(e.pos) or not vp.grow(60).has_point(sp):
 			continue

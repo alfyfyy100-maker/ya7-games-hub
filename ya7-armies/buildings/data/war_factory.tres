@@ -17,3 +17,7 @@ producible_units = Array[StringName]([&"tank", &"apc", &"harvester"])
 default_rally_offset = Vector2i(0, 3)
 accent_color = Color(0.55, 0.6, 0.65, 1)
 height = 2.6
+model_path = "res://assets/models/kenney/space/hangar_largeA.glb"
+model_fit = 0.9
+model_yaw_deg = 90.0
+team_tint = 0.35

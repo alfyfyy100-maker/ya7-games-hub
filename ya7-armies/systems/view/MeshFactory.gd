@@ -19,6 +19,20 @@ static func material(color: Color) -> ShaderMaterial:
 	return m
 
 
+## مادة مسطحة بلا إضاءة (أقراص الفريق، الحلقات). مشتركة عبر cache.
+static func flat_material(color: Color) -> StandardMaterial3D:
+	var key := "flat_%d" % color.to_rgba32()
+	if _materials.has(key):
+		return _materials[key]
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = color
+	if color.a < 0.999:
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_materials[key] = m
+	return m
+
+
 static func box_mesh(size: Vector3) -> BoxMesh:
 	var key := "box_%s" % size
 	if _meshes.has(key):

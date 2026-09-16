@@ -22,3 +22,6 @@ cargo_capacity = 120
 gather_ticks_per_unit = 2
 unload_ticks = 30
 accent_color = Color(0.95, 0.75, 0.2, 1)
+model_path = "res://assets/models/kenney/car/tractor-shovel.glb"
+model_fit_size = 2.6
+team_tint = 0.3

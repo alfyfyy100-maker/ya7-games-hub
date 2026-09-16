@@ -22,3 +22,6 @@ cargo_capacity = 0
 gather_ticks_per_unit = 1
 unload_ticks = 1
 accent_color = Color(0.95, 0.65, 0.25, 1)
+model_path = "res://assets/models/kenney/mini-characters/character-male-c.glb"
+model_fit_size = 1.7
+team_tint = 0.35

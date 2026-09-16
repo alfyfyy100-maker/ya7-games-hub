@@ -10,6 +10,12 @@ var height: int = GameConfig.MAP_H
 var heights: PackedFloat32Array = PackedFloat32Array()
 var start_cells: Dictionary = {}       # player_id -> Vector2i (مركز القاعدة)
 var resource_cells: Array[Vector2i] = []
+## ديكور يعيق الحركة (أشجار/صخور): [{cell: Vector2i, kind: int}]
+var decor: Array[Dictionary] = []
+
+enum DecorKind { TREE, ROCKS }
+const DECOR_TREES: int = 55
+const DECOR_ROCKS: int = 18
 
 const BASE_FLAT_RADIUS: float = 9.0
 const BASE_FLAT_HEIGHT: float = 0.35
@@ -69,6 +75,46 @@ func generate() -> void:
 		cell = _clamp_cell(cell)
 		_flatten_disc(cell, 2.5, maxf(cell_center_height(cell), 0.2))
 		resource_cells.append(cell)
+
+	_generate_decor()
+
+
+## أشجار وصخور (مبذورة) بعيدًا عن القواعد والموارد والممر.
+func _generate_decor() -> void:
+	decor.clear()
+	var pa := Vector2(start_cells[GameConfig.PLAYER_ID])
+	var pb := Vector2(start_cells[GameConfig.AI_ID])
+	var seg := pb - pa
+	var used: Dictionary = {}
+	var trees := 0
+	var rocks := 0
+	for _attempt in 900:
+		if trees >= DECOR_TREES and rocks >= DECOR_ROCKS:
+			break
+		var c := Vector2i(RNG.range_int(1, width - 2), RNG.range_int(1, height - 2))
+		if used.has(c) or not is_terrain_walkable(c):
+			continue
+		if cell_center_height(c) < GameConfig.WATER_LEVEL + 0.5:
+			continue
+		var ok := true
+		for pid in start_cells:
+			if Vector2(c - start_cells[pid]).length() < BASE_FLAT_RADIUS + 2.0:
+				ok = false
+		for r in resource_cells:
+			if Vector2(c - r).length() < 2.5:
+				ok = false
+		var t := clampf((Vector2(c) - pa).dot(seg) / seg.length_squared(), 0.0, 1.0)
+		if (pa + seg * t - Vector2(c)).length() < 4.0:
+			ok = false
+		if not ok:
+			continue
+		var kind := DecorKind.TREE if trees < DECOR_TREES and (rocks >= DECOR_ROCKS or RNG.chance(0.75)) else DecorKind.ROCKS
+		if kind == DecorKind.TREE:
+			trees += 1
+		else:
+			rocks += 1
+		used[c] = true
+		decor.append({"cell": c, "kind": kind})
 
 
 func _make_lattice(step: int) -> PackedFloat32Array:

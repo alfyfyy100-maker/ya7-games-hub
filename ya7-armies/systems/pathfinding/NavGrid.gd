@@ -23,6 +23,11 @@ func build(m: MapState) -> void:
 		for x in m.width:
 			var c := Vector2i(x, y)
 			astar.set_point_solid(c, not m.is_terrain_walkable(c))
+	# الديكور (أشجار/صخور) يحجز خلاياه
+	for d in m.decor:
+		var c: Vector2i = d.cell
+		occupied[c] = -1
+		astar.set_point_solid(c, true)
 
 
 func is_walkable(cell: Vector2i) -> bool:

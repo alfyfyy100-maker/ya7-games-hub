@@ -40,7 +40,22 @@ enum VisualKind { HQ, BARRACKS, WAR_FACTORY, REFINERY, TOWER }
 
 @export_group("Look")
 @export var accent_color: Color = Color(0.9, 0.9, 0.9)
+## ارتفاع تقريبي (للنموذج المؤقت وأشرطة الواجهة).
 @export var height: float = 2.0
+
+@export_group("Model (glTF)")
+## مسار نموذج glb/gltf. فارغ = نموذج بلوكي مؤقت من MeshFactory.
+@export_file("*.glb", "*.gltf") var model_path: String = ""
+## نسبة ملء البصمة (0.85 = يترك هامشًا حول المبنى).
+@export_range(0.3, 1.2) var model_fit: float = 0.85
+@export var model_yaw_deg: float = 0.0
+## جزء يُكدَّس فوق النموذج الأساسي (مثلًا طابق البرج).
+@export_file("*.glb", "*.gltf") var top_model_path: String = ""
+## برج دوّار يوضع على القمة (أبراج الدفاع).
+@export_file("*.glb", "*.gltf") var turret_model_path: String = ""
+@export var turret_fit_size: float = 0.0
+@export var turret_yaw_deg: float = 0.0
+@export_range(0.0, 1.0) var team_tint: float = 0.3
 
 
 func can_produce() -> bool:

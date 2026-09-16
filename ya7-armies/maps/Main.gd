@@ -7,6 +7,7 @@ extends Node3D
 @export var randomize_seed: bool = true
 
 @onready var terrain: Node3D = $Terrain
+@onready var decor: Node3D = $Decor
 @onready var world_view: WorldView = $WorldView
 @onready var camera_rig: CameraRig = $CameraRig
 @onready var hud: HUD = $UI/HUD
@@ -29,6 +30,7 @@ func start_match(seed_value: int) -> void:
 	world_view.clear()
 	GameState.new_game(seed_value)
 	terrain.build(GameState.map)
+	decor.build(GameState.map)
 	camera_rig.set_map(GameState.map)
 	world_view.attach()
 	GameState.start_match()
