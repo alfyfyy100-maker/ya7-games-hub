@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://buildings/BuildingData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"war_factory"
+display_name = "مصنع مركبات"
+visual_kind = 2
+max_hp = 1500.0
+footprint = Vector2i(3, 2)
+constructible = true
+build_order = 30
+cost = 1000
+build_ticks = 420
+producible_units = Array[StringName]([&"tank", &"apc", &"harvester"])
+default_rally_offset = Vector2i(0, 3)
+accent_color = Color(0.55, 0.6, 0.65, 1)
+height = 2.6

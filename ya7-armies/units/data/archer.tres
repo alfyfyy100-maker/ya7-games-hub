@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://units/UnitData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"archer"
+display_name = "رامي"
+category = 0
+visual_kind = 1
+max_hp = 70.0
+speed = 5.0
+radius = 0.45
+damage = 16.0
+attack_range = 11.0
+fire_cooldown_ticks = 34
+aggro_range = 14.0
+cost = 150
+build_ticks = 160
+can_harvest = false
+cargo_capacity = 0
+gather_ticks_per_unit = 1
+unload_ticks = 1
+accent_color = Color(0.95, 0.65, 0.25, 1)

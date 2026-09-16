@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://units/UnitData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"tank"
+display_name = "دبابة"
+category = 1
+visual_kind = 3
+max_hp = 420.0
+speed = 4.5
+radius = 0.9
+damage = 45.0
+attack_range = 9.0
+fire_cooldown_ticks = 45
+aggro_range = 12.0
+cost = 400
+build_ticks = 360
+can_harvest = false
+cargo_capacity = 0
+gather_ticks_per_unit = 1
+unload_ticks = 1
+accent_color = Color(0.45, 0.5, 0.35, 1)

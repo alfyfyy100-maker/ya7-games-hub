@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://buildings/BuildingData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"refinery"
+display_name = "مصفاة"
+visual_kind = 3
+max_hp = 1200.0
+footprint = Vector2i(2, 2)
+constructible = true
+build_order = 10
+cost = 600
+build_ticks = 300
+producible_units = Array[StringName]([])
+is_refinery = true
+accent_color = Color(0.95, 0.75, 0.2, 1)
+height = 2.4

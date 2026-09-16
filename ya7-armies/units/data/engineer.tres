@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://units/UnitData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"engineer"
+display_name = "مهندس"
+category = 0
+visual_kind = 2
+max_hp = 60.0
+speed = 5.0
+radius = 0.45
+damage = 0.0
+attack_range = 0.0
+fire_cooldown_ticks = 30
+aggro_range = 0.0
+cost = 120
+build_ticks = 140
+can_harvest = false
+cargo_capacity = 0
+gather_ticks_per_unit = 1
+unload_ticks = 1
+accent_color = Color(0.95, 0.9, 0.3, 1)

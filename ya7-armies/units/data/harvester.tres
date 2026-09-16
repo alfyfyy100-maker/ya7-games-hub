@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://units/UnitData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"harvester"
+display_name = "حصّادة"
+category = 2
+visual_kind = 4
+max_hp = 300.0
+speed = 4.0
+radius = 0.9
+damage = 0.0
+attack_range = 0.0
+fire_cooldown_ticks = 30
+aggro_range = 0.0
+cost = 350
+build_ticks = 300
+can_harvest = true
+cargo_capacity = 120
+gather_ticks_per_unit = 2
+unload_ticks = 30
+accent_color = Color(0.95, 0.75, 0.2, 1)

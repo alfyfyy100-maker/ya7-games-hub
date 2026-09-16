@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://units/UnitData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"soldier"
+display_name = "جندي"
+category = 0
+visual_kind = 0
+max_hp = 100.0
+speed = 5.5
+radius = 0.45
+damage = 12.0
+attack_range = 7.0
+fire_cooldown_ticks = 20
+aggro_range = 11.0
+cost = 100
+build_ticks = 120
+can_harvest = false
+cargo_capacity = 0
+gather_ticks_per_unit = 1
+unload_ticks = 1
+accent_color = Color(0.35, 0.75, 0.35, 1)

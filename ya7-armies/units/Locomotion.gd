@@ -1,0 +1,63 @@
+class_name Locomotion
+extends RefCounted
+## Locomotion — مساعد حركة مشترك بين الحالات (Move/Attack/Gather).
+## يعمل على بيانات SimEntity فقط (بدون نودات). كل الحركة بالفريم الثابت.
+
+const ARRIVE_EPS: float = 0.15
+
+
+## يطلب مسارًا جديدًا إلى نقطة عالمية. يرجّع false لو لم يوجد مسار.
+static func request_path(e: SimEntity, gs: Node, target: Vector3) -> bool:
+	e.path = gs.nav.find_path_world(e.pos, target)
+	e.path_index = 0
+	return not e.path.is_empty()
+
+
+## يتقدم خطوة واحدة على المسار. يرجّع true عند الوصول (أو لا يوجد مسار).
+static func step(e: SimEntity, gs: Node) -> bool:
+	if e.path.is_empty() or e.path_index >= e.path.size():
+		return true
+	var def := e.unit_def()
+	var remaining := def.speed_per_tick() if def != null else 0.1
+	while remaining > 0.0 and e.path_index < e.path.size():
+		var wp := e.path[e.path_index]
+		var to := Vector3(wp.x - e.pos.x, 0.0, wp.z - e.pos.z)
+		var dist := to.length()
+		if dist <= ARRIVE_EPS:
+			e.path_index += 1
+			continue
+		var move := minf(dist, remaining)
+		var dir := to / dist
+		e.pos.x += dir.x * move
+		e.pos.z += dir.z * move
+		e.facing = atan2(dir.x, dir.z)
+		remaining -= move
+		if move >= dist - ARRIVE_EPS:
+			e.path_index += 1
+	e.pos.y = gs.map.height_at_world(e.pos.x, e.pos.z)
+	return e.path_index >= e.path.size()
+
+
+static func face_towards(e: SimEntity, target: Vector3) -> void:
+	var d := Vector3(target.x - e.pos.x, 0.0, target.z - e.pos.z)
+	if d.length_squared() > 0.0001:
+		e.facing = atan2(d.x, d.z)
+
+
+static func flat_distance(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x - b.x, a.z - b.z).length()
+
+
+## المسافة الأفقية من نقطة إلى كيان: للمباني/الموارد تُحسب إلى حافة مستطيل البصمة، للوحدات إلى المركز.
+static func distance_to_entity(from: Vector3, target: SimEntity) -> float:
+	if target.is_unit():
+		return flat_distance(from, target.pos)
+	var cell: Vector2i = target.data.get("cell", Vector2i.ZERO)
+	var fp: Vector2i = target.data.get("footprint", Vector2i.ONE)
+	var min_x := cell.x * GameConfig.CELL_SIZE
+	var min_z := cell.y * GameConfig.CELL_SIZE
+	var max_x := (cell.x + fp.x) * GameConfig.CELL_SIZE
+	var max_z := (cell.y + fp.y) * GameConfig.CELL_SIZE
+	var dx := maxf(maxf(min_x - from.x, 0.0), from.x - max_x)
+	var dz := maxf(maxf(min_z - from.z, 0.0), from.z - max_z)
+	return sqrt(dx * dx + dz * dz)

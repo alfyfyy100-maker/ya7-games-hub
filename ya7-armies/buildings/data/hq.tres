@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://buildings/BuildingData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"hq"
+display_name = "المقر الرئيسي"
+visual_kind = 0
+max_hp = 3000.0
+footprint = Vector2i(3, 3)
+constructible = false
+build_order = 0
+cost = 2000
+build_ticks = 600
+producible_units = Array[StringName]([&"harvester"])
+default_rally_offset = Vector2i(0, 3)
+is_hq = true
+accent_color = Color(0.3, 0.6, 0.95, 1)
+height = 3.2
