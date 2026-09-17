@@ -9,6 +9,7 @@ extends Node3D
 @onready var terrain: Node3D = $Terrain
 @onready var decor: Node3D = $Decor
 @onready var world_view: WorldView = $WorldView
+@onready var combat_fx: CombatFX = $CombatFX
 @onready var camera_rig: CameraRig = $CameraRig
 @onready var hud: HUD = $UI/HUD
 @onready var overlay: WorldOverlay = $UI/Overlay
@@ -33,6 +34,7 @@ func start_match(seed_value: int) -> void:
 	decor.build(GameState.map)
 	camera_rig.set_map(GameState.map)
 	world_view.attach()
+	combat_fx.setup(world_view)
 	GameState.start_match()
 	var hq_cell: Vector2i = GameState.map.start_cells[GameConfig.PLAYER_ID]
 	camera_rig.focus(GameState.map.cell_to_world(hq_cell))

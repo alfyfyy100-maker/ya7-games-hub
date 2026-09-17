@@ -62,7 +62,7 @@ func _build_layout() -> void:
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 14)
 	top_bar.add_child(top)
-	credits_label = _label("$ 0", 22)
+	credits_label = _label("نفط 0", 22)
 	credits_label.custom_minimum_size.x = 140
 	top.add_child(credits_label)
 	time_label = _label("00:00", 18)
@@ -159,7 +159,7 @@ func show_message(text: String) -> void:
 
 
 func _process(delta: float) -> void:
-	credits_label.text = "$ %d" % GameState.get_credits(GameConfig.PLAYER_ID)
+	credits_label.text = "نفط %d" % GameState.get_credits(GameConfig.PLAYER_ID)
 	var secs := GameState.tick / GameConfig.TICK_RATE
 	time_label.text = "%02d:%02d" % [secs / 60, secs % 60]
 	if _message_timer > 0.0:
@@ -202,11 +202,11 @@ func refresh_actions() -> void:
 				var udef := GameConfig.get_unit_def(uid)
 				if udef == null:
 					continue
-				var b := _button("%s\n$%d" % [udef.display_name, udef.cost], Vector2(110, 80))
+				var b := _button("%s\n%d نفط" % [udef.display_name, udef.cost], Vector2(110, 80))
 				b.disabled = credits < udef.cost
 				b.pressed.connect(func() -> void:
 					if not GameState.enqueue_production(building.id, uid):
-						show_message("لا يمكن الإنتاج الآن"))
+						show_message("نفط غير كافٍ أو القائمة ممتلئة"))
 				actions_box.add_child(b)
 			if def.can_produce():
 				var rally := _button("نقطة\nالتجمع", Vector2(100, 80))
@@ -237,7 +237,7 @@ func refresh_actions() -> void:
 
 	# لا شيء مختار: قائمة البناء (مبنية على البيانات)
 	for bdef in GameConfig.get_constructible_buildings():
-		var b := _button("%s\n$%d" % [bdef.display_name, bdef.cost], Vector2(120, 80))
+		var b := _button("%s\n%d نفط" % [bdef.display_name, bdef.cost], Vector2(120, 80))
 		b.disabled = credits < bdef.cost
 		b.pressed.connect(func() -> void:
 			_input.set_tool(InputController.Tool.BUILD, bdef.id)
@@ -268,7 +268,7 @@ func _refresh_info() -> void:
 		if units.size() == 1:
 			var e: SimEntity = GameState.get_entity(units[0])
 			var d := e.unit_def()
-			info_label.text = "%s  %d/%d\nانقر الأرض للتحرك، أو عدوًا للهجوم" % [d.display_name, int(e.hp), int(e.max_hp)]
+			info_label.text = "%s  %d/%d\nانقر الأرض للتحرك، أو عدوًا للهجوم، أو حقل نفط للجمع" % [d.display_name, int(e.hp), int(e.max_hp)]
 		else:
 			info_label.text = "%d وحدات مختارة\nانقر الأرض للتحرك، أو عدوًا للهجوم" % units.size()
 		return

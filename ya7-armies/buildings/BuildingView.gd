@@ -99,6 +99,12 @@ func _setup_placeholder(team: Color) -> void:
 	visual_height = _def.height + 0.6
 
 
+func muzzle_position() -> Vector3:
+	if _turret != null and _turret.node != null:
+		return _turret.node.global_position + Vector3(0, 0.3, 0)
+	return global_position + Vector3(0, visual_height * 0.7, 0)
+
+
 func set_selected(v: bool) -> void:
 	ring.visible = v
 	rally_marker.visible = v and _def.can_produce()
@@ -122,6 +128,12 @@ func _process(delta: float) -> void:
 	if not e.data.get("completed", false):
 		t = clampf(float(e.data.get("construction", 0)) / float(maxi(_def.build_ticks, 1)), 0.05, 1.0)
 	body.position.y = -(1.0 - t) * (visual_height + 0.5)
+	# اهتزاز خفيف عند الإصابة
+	var since_hit := GameState.tick - e.last_hit_tick
+	if since_hit >= 0 and since_hit < 4:
+		body.position.x = sin(float(since_hit) * 2.1) * 0.06
+	else:
+		body.position.x = 0.0
 	if _turret != null:
 		_turret.node.visible = t >= 0.999
 		var aimed := false

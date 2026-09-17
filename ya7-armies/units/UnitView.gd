@@ -17,6 +17,7 @@ var _anim_t: float = 0.0
 var _sink: float = 0.0
 var _selected: bool = false
 var _owner_id: int = 0
+var _cargo_barrels: Array[Node3D] = []
 
 
 func setup(e: SimEntity) -> void:
@@ -57,6 +58,8 @@ func _setup_model(team: Color) -> void:
 	ModelLibrary.apply_team_look(model, team, _def.team_tint)
 	visual_height = aabb.size.y
 	_anim = ModelLibrary.find_animation_player(model)
+	if _def.can_harvest:
+		_setup_cargo_barrels(aabb)
 	# برج داخلي (عقدة داخل النموذج نفسه)
 	var inner := ModelLibrary.find_node_by_suffix(model, _def.turret_node_suffix)
 	if inner != null:
@@ -75,6 +78,24 @@ func _setup_model(team: Color) -> void:
 		visual_height += ta.size.y
 
 
+## براميل نفط تظهر على صندوق الحصّادة كلما امتلأت الحمولة.
+func _setup_cargo_barrels(aabb: AABB) -> void:
+	const BARREL := "res://assets/models/rgpoly/Barrel_1_A.fbx"
+	if not ModelLibrary.has_model(BARREL):
+		return
+	var top := aabb.size.y * 0.78
+	var slots := [Vector3(-0.3, top, -0.35), Vector3(0.3, top, -0.35), Vector3(-0.3, top, -0.85), Vector3(0.3, top, -0.85)]
+	for i in slots.size():
+		var b := ModelLibrary.instantiate(BARREL)
+		body.add_child(b)
+		var ba := ModelLibrary.fit_max(b, 0.42)
+		ModelLibrary.center_on_ground(b, ba)
+		b.position += slots[i]
+		ModelLibrary.apply_team_look(b, Color(0.12, 0.1, 0.08), 0.75)
+		b.visible = false
+		_cargo_barrels.append(b)
+
+
 func _setup_placeholder(team: Color) -> void:
 	var mesh_body := MeshFactory.make_unit(_def.visual_kind, team, _def.accent_color)
 	mesh_body.scale = Vector3.ONE * _def.scale
@@ -87,6 +108,13 @@ func _setup_placeholder(team: Color) -> void:
 		if leg != null:
 			_legs.append(leg)
 	visual_height = 1.5 * _def.scale
+
+
+## موضع الفوهة (للمقذوفات المرئية).
+func muzzle_position() -> Vector3:
+	if _turret != null and _turret.node != null:
+		return _turret.node.global_position + Vector3(0, 0.25, 0)
+	return global_position + Vector3(0, visual_height * 0.65, 0)
 
 
 func set_selected(v: bool) -> void:
@@ -174,8 +202,13 @@ func _process(delta: float) -> void:
 				aimed = true
 		if not aimed:
 			_turret.relax(delta)
+	# حصّادة: براميل تظهر تدريجيًا مع الحمولة
+	if not _cargo_barrels.is_empty():
+		var ratio := float(e.cargo) / float(maxi(_def.cargo_capacity, 1))
+		for i in _cargo_barrels.size():
+			_cargo_barrels[i].visible = ratio > float(i) / float(_cargo_barrels.size()) + 0.01
 	# حصّادة (النموذج المؤقت): صندوق الحمولة يرتفع مع الامتلاء
-	if _def.can_harvest and _anim == null:
+	if _def.can_harvest and _anim == null and _cargo_barrels.is_empty():
 		var cargo_node := body.find_child("Cargo", true, false)
 		if cargo_node != null:
 			var r := float(e.cargo) / float(maxi(_def.cargo_capacity, 1))

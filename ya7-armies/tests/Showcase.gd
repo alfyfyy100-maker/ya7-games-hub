@@ -40,6 +40,9 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	_frame += 1
+	# لقطات متتابعة أثناء القتال لالتقاط المقذوفات
+	if _frame in [64, 67, 70, 73, 76]:
+		get_viewport().get_texture().get_image().save_png(_out.path_join("combat_%d.png" % _frame))
 	if _frame == 60:
 		get_viewport().get_texture().get_image().save_png(_out.path_join("showcase.png"))
 		print("[Showcase] saved tick=", GameState.tick)

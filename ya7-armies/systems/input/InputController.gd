@@ -365,7 +365,7 @@ func _try_place_building(screen_pos: Vector2) -> void:
 		message.emit("موقع غير صالح للبناء")
 		return
 	if GameState.get_credits(GameConfig.PLAYER_ID) < def.cost:
-		message.emit("موارد غير كافية")
+		message.emit("النفط غير كافٍ")
 		return
 	var id := GameState.place_building(build_def_id, _ghost_cell, GameConfig.PLAYER_ID)
 	if id > 0:

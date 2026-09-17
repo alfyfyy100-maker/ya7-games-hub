@@ -158,7 +158,7 @@ func spawn_resource(cell: Vector2i, amount: int) -> int:
 	var e := SimEntity.new()
 	e.id = _alloc_id()
 	e.kind = SimEntity.Kind.RESOURCE
-	e.def_id = &"crystal"
+	e.def_id = &"oil"
 	e.owner_id = 0
 	e.pos = map.cell_to_world(cell)
 	e.prev_pos = e.pos
