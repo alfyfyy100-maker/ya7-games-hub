@@ -9,14 +9,14 @@ var body: Node3D                # حامل الجسم (اهتزاز/ارتداد
 var ring: MeshInstance3D
 var visual_height: float = 1.6
 var _def: UnitData
-var _turret: Node3D
-var _turret_yaw_offset: float = 0.0
+var _turret: TurretPivot
 var _legs: Array[Node3D] = []
 var _anim: AnimationPlayer
 var _anim_current: String = ""
 var _anim_t: float = 0.0
 var _sink: float = 0.0
 var _selected: bool = false
+var _owner_id: int = 0
 
 
 func setup(e: SimEntity) -> void:
@@ -26,6 +26,7 @@ func setup(e: SimEntity) -> void:
 	body = Node3D.new()
 	body.name = "Body"
 	add_child(body)
+	_owner_id = e.owner_id
 	if ModelLibrary.has_model(_def.model_path):
 		_setup_model(team)
 	else:
@@ -45,7 +46,7 @@ func setup(e: SimEntity) -> void:
 
 
 func _setup_model(team: Color) -> void:
-	var model := ModelLibrary.instantiate(_def.model_path)
+	var model := ModelLibrary.instantiate(ModelLibrary.path_for_team(_def.model_path, _def.model_path_team2, _owner_id))
 	var holder := Node3D.new()
 	holder.name = "Model"
 	holder.rotation_degrees.y = _def.model_yaw_deg
@@ -56,6 +57,10 @@ func _setup_model(team: Color) -> void:
 	ModelLibrary.apply_team_look(model, team, _def.team_tint)
 	visual_height = aabb.size.y
 	_anim = ModelLibrary.find_animation_player(model)
+	# برج داخلي (عقدة داخل النموذج نفسه)
+	var inner := ModelLibrary.find_node_by_suffix(model, _def.turret_node_suffix)
+	if inner != null:
+		_turret = TurretPivot.new(inner, deg_to_rad(_def.turret_yaw_deg))
 	if ModelLibrary.has_model(_def.turret_model_path):
 		var turret_holder := Node3D.new()
 		turret_holder.name = "Turret"
@@ -66,8 +71,7 @@ func _setup_model(team: Color) -> void:
 		var ta := ModelLibrary.fit_max(turret, _def.turret_fit_size)
 		ModelLibrary.center_on_ground(turret, ta)
 		ModelLibrary.apply_team_look(turret, team, _def.team_tint)
-		_turret = turret_holder
-		_turret_yaw_offset = deg_to_rad(_def.turret_yaw_deg)
+		_turret = TurretPivot.new(turret_holder, deg_to_rad(_def.turret_yaw_deg))
 		visual_height += ta.size.y
 
 
@@ -75,7 +79,9 @@ func _setup_placeholder(team: Color) -> void:
 	var mesh_body := MeshFactory.make_unit(_def.visual_kind, team, _def.accent_color)
 	mesh_body.scale = Vector3.ONE * _def.scale
 	body.add_child(mesh_body)
-	_turret = mesh_body.get_node_or_null("Turret")
+	var t := mesh_body.get_node_or_null("Turret")
+	if t != null:
+		_turret = TurretPivot.new(t)
 	for n in ["LegL", "LegR"]:
 		var leg := mesh_body.get_node_or_null(n)
 		if leg != null:
@@ -159,14 +165,15 @@ func _process(delta: float) -> void:
 	body.position = Vector3(0, bob, -recoil)
 	body.scale = Vector3.ONE * flinch
 	if _turret != null:
+		var aimed := false
 		if e.state == &"attack":
 			var t: SimEntity = GameState.get_entity(e.target_id)
 			if t != null:
 				var to := t.pos - e.pos
-				var yaw := atan2(to.x, to.z) - rotation.y + _turret_yaw_offset
-				_turret.rotation.y = lerp_angle(_turret.rotation.y, yaw, minf(1.0, delta * 8.0))
-		else:
-			_turret.rotation.y = lerp_angle(_turret.rotation.y, _turret_yaw_offset, minf(1.0, delta * 4.0))
+				_turret.aim(atan2(to.x, to.z), rotation.y, delta)
+				aimed = true
+		if not aimed:
+			_turret.relax(delta)
 	# حصّادة (النموذج المؤقت): صندوق الحمولة يرتفع مع الامتلاء
 	if _def.can_harvest and _anim == null:
 		var cargo_node := body.find_child("Cargo", true, false)

@@ -9,8 +9,8 @@ var ring: MeshInstance3D
 var rally_marker: Node3D
 var visual_height: float = 2.0
 var _def: BuildingData
-var _turret: Node3D
-var _turret_yaw_offset: float = 0.0
+var _turret: TurretPivot
+var _owner_id: int = 0
 var _sink: float = 0.0
 
 
@@ -18,6 +18,7 @@ func setup(e: SimEntity) -> void:
 	entity_id = e.id
 	_def = e.building_def()
 	var team := GameConfig.team_color(e.owner_id)
+	_owner_id = e.owner_id
 	body = Node3D.new()
 	body.name = "Body"
 	add_child(body)
@@ -54,7 +55,7 @@ func _setup_model(team: Color) -> void:
 	holder.rotation_degrees.y = _def.model_yaw_deg
 	holder.position.y = 0.18
 	body.add_child(holder)
-	var model := ModelLibrary.instantiate(_def.model_path)
+	var model := ModelLibrary.instantiate(ModelLibrary.path_for_team(_def.model_path, _def.model_path_team2, _owner_id))
 	holder.add_child(model)
 	# عند تدوير النموذج 90° نبدّل العرض والعمق
 	var swap := absf(fmod(_def.model_yaw_deg, 180.0)) > 45.0
@@ -63,6 +64,9 @@ func _setup_model(team: Color) -> void:
 	ModelLibrary.apply_team_look(model, team, _def.team_tint)
 	var top_y := 0.18 + aabb.size.y
 	var scale_used := model.scale.x
+	var inner := ModelLibrary.find_node_by_suffix(model, _def.turret_node_suffix)
+	if inner != null:
+		_turret = TurretPivot.new(inner, deg_to_rad(_def.turret_yaw_deg))
 	if ModelLibrary.has_model(_def.top_model_path):
 		var top := ModelLibrary.instantiate(_def.top_model_path)
 		holder.add_child(top)
@@ -81,8 +85,7 @@ func _setup_model(team: Color) -> void:
 		var tta := ModelLibrary.fit_max(turret, _def.turret_fit_size)
 		ModelLibrary.center_on_ground(turret, tta)
 		ModelLibrary.apply_team_look(turret, team, _def.team_tint)
-		_turret = turret_holder
-		_turret_yaw_offset = deg_to_rad(_def.turret_yaw_deg)
+		_turret = TurretPivot.new(turret_holder, deg_to_rad(_def.turret_yaw_deg))
 		top_y += tta.size.y
 	visual_height = top_y
 
@@ -90,7 +93,9 @@ func _setup_model(team: Color) -> void:
 func _setup_placeholder(team: Color) -> void:
 	var mesh_body := MeshFactory.make_building(_def.visual_kind, team, _def.accent_color, _def.footprint, _def.height)
 	body.add_child(mesh_body)
-	_turret = mesh_body.get_node_or_null("Turret")
+	var t := mesh_body.get_node_or_null("Turret")
+	if t != null:
+		_turret = TurretPivot.new(t)
 	visual_height = _def.height + 0.6
 
 
@@ -109,8 +114,6 @@ func _process(delta: float) -> void:
 		_sink += delta
 		body.position.y = -_sink * 2.0
 		body.rotation.z = minf(_sink * 0.8, 0.5)
-		if _turret != null:
-			_turret.position.y -= delta * 2.0
 		ring.visible = false
 		rally_marker.visible = false
 		return
@@ -120,11 +123,15 @@ func _process(delta: float) -> void:
 		t = clampf(float(e.data.get("construction", 0)) / float(maxi(_def.build_ticks, 1)), 0.05, 1.0)
 	body.position.y = -(1.0 - t) * (visual_height + 0.5)
 	if _turret != null:
-		_turret.visible = t >= 0.999
+		_turret.node.visible = t >= 0.999
+		var aimed := false
 		if e.target_id > 0:
 			var target: SimEntity = GameState.get_entity(e.target_id)
 			if target != null:
 				var to := target.pos - e.pos
-				_turret.rotation.y = lerp_angle(_turret.rotation.y, atan2(to.x, to.z) + _turret_yaw_offset, minf(1.0, delta * 8.0))
+				_turret.aim(atan2(to.x, to.z), rotation.y + deg_to_rad(_def.model_yaw_deg), delta)
+				aimed = true
+		if not aimed:
+			_turret.relax(delta)
 	if rally_marker.visible:
 		rally_marker.global_position = e.data.get("rally", e.pos)

@@ -119,6 +119,23 @@ static func _styled_material(src: Material, team: Color, strength: float) -> Mat
 	return out
 
 
+## يختار مسار النموذج حسب الفريق (نموذج بديل للفريق 2 إن وُجد).
+static func path_for_team(base: String, team2: String, owner_id: int) -> String:
+	if owner_id == GameConfig.AI_ID and has_model(team2):
+		return team2
+	return base
+
+
+## يبحث عن أول عقدة Node3D ينتهي اسمها باللاحقة (للأبراج الداخلية مثل "_T").
+static func find_node_by_suffix(root: Node, suffix: String) -> Node3D:
+	if suffix == "":
+		return null
+	for n in root.find_children("*", "Node3D", true, false):
+		if String(n.name).ends_with(suffix):
+			return n
+	return null
+
+
 static func find_animation_player(root: Node) -> AnimationPlayer:
 	for n in root.find_children("*", "AnimationPlayer", true, false):
 		var ap := n as AnimationPlayer

@@ -45,14 +45,18 @@ enum VisualKind { HQ, BARRACKS, WAR_FACTORY, REFINERY, TOWER }
 
 @export_group("Model (glTF)")
 ## مسار نموذج glb/gltf. فارغ = نموذج بلوكي مؤقت من MeshFactory.
-@export_file("*.glb", "*.gltf") var model_path: String = ""
+@export_file("*.glb", "*.gltf", "*.fbx") var model_path: String = ""
+## نموذج بديل للفريق الثاني (الخصم) — لتنويعات الألوان الجاهزة. فارغ = نفس النموذج.
+@export_file("*.glb", "*.gltf", "*.fbx") var model_path_team2: String = ""
+## لاحقة اسم عقدة البرج داخل النموذج نفسه (مثل "_T") — تدور نحو الهدف.
+@export var turret_node_suffix: String = ""
 ## نسبة ملء البصمة (0.85 = يترك هامشًا حول المبنى).
 @export_range(0.3, 1.2) var model_fit: float = 0.85
 @export var model_yaw_deg: float = 0.0
 ## جزء يُكدَّس فوق النموذج الأساسي (مثلًا طابق البرج).
-@export_file("*.glb", "*.gltf") var top_model_path: String = ""
+@export_file("*.glb", "*.gltf", "*.fbx") var top_model_path: String = ""
 ## برج دوّار يوضع على القمة (أبراج الدفاع).
-@export_file("*.glb", "*.gltf") var turret_model_path: String = ""
+@export_file("*.glb", "*.gltf", "*.fbx") var turret_model_path: String = ""
 @export var turret_fit_size: float = 0.0
 @export var turret_yaw_deg: float = 0.0
 @export_range(0.0, 1.0) var team_tint: float = 0.3

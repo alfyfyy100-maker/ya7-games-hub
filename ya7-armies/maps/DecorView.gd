@@ -3,8 +3,8 @@ extends Node3D
 ## عرض فقط؛ الحجز المنطقي للخلايا في NavGrid.
 
 const MODELS: Dictionary = {
-	MapState.DecorKind.TREE: {"path": "res://assets/models/kenney/tower-defense/detail-tree-large.glb", "fit": 2.6},
-	MapState.DecorKind.ROCKS: {"path": "res://assets/models/kenney/tower-defense/detail-rocks-large.glb", "fit": 1.9},
+	MapState.DecorKind.TREE: {"path": "res://assets/models/rgpoly/PineTree_1_A.fbx", "fit": 3.4},
+	MapState.DecorKind.ROCKS: {"path": "res://assets/models/rgpoly/Bags_3_A.fbx", "fit": 2.0},
 }
 
 

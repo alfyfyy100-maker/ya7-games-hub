@@ -44,12 +44,16 @@ enum VisualKind { SOLDIER, ARCHER, ENGINEER, TANK, HARVESTER, APC }
 
 @export_group("Model (glTF)")
 ## مسار نموذج glb/gltf. فارغ = نموذج بلوكي مؤقت من MeshFactory.
-@export_file("*.glb", "*.gltf") var model_path: String = ""
+@export_file("*.glb", "*.gltf", "*.fbx") var model_path: String = ""
+## نموذج بديل للفريق الثاني (الخصم) — لتنويعات الألوان الجاهزة. فارغ = نفس النموذج.
+@export_file("*.glb", "*.gltf", "*.fbx") var model_path_team2: String = ""
+## لاحقة اسم عقدة البرج داخل النموذج نفسه (مثل "_T") — تدور نحو الهدف. فارغ = لا برج داخلي.
+@export var turret_node_suffix: String = ""
 ## أكبر بُعد مستهدف للنموذج بوحدات العالم (0 = بدون قياس تلقائي).
 @export var model_fit_size: float = 0.0
 @export var model_yaw_deg: float = 0.0
 ## برج دوّار اختياري يوضع فوق الهيكل (دبابات).
-@export_file("*.glb", "*.gltf") var turret_model_path: String = ""
+@export_file("*.glb", "*.gltf", "*.fbx") var turret_model_path: String = ""
 @export var turret_fit_size: float = 0.0
 @export var turret_yaw_deg: float = 0.0
 ## قوة تلوين النموذج بلون الفريق (0..1).
