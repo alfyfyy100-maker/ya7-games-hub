@@ -24,12 +24,19 @@ var actions_box: HBoxContainer
 var message_label: Label
 var game_over_panel: PanelContainer
 var game_over_label: Label
+var side_panel: PanelContainer
+var group_buttons: Dictionary = {}
+var _hold_timer: float = 0.0
+var _hold_group: int = 0
+var _hold_done: bool = false
+var _last_credits: int = -1
+var _floaters: Array[Dictionary] = []   # [{label, t}]
+var _credits_flash: float = 0.0
 
 var _message_timer: float = 0.0
 var _alert_tick: int = -100000
 var _refresh_timer: float = 0.0
 var _seen_building_id: int = -1
-var _last_credits: int = -1
 
 
 func _ready() -> void:
@@ -42,8 +49,9 @@ func _ready() -> void:
 	_input.drag_mode_changed.connect(func(_m: int) -> void: _update_mode_button())
 	_input.tool_changed.connect(func(_t: int) -> void: refresh_actions())
 	_input.message.connect(show_message)
-	GameState.credits_changed.connect(func(pid: int, _c: int) -> void:
+	GameState.credits_changed.connect(func(pid: int, c: int) -> void:
 		if pid == GameConfig.PLAYER_ID:
+			_on_credits(c)
 			refresh_actions())
 	GameState.game_over.connect(_on_game_over)
 	GameState.damage_dealt.connect(_on_damage)
@@ -99,6 +107,38 @@ func _build_layout() -> void:
 	actions_box.add_theme_constant_override("separation", 8)
 	scroll.add_child(actions_box)
 
+	# ---- لوحة جانبية (يمين): اختصارات الاختيار — أزرار كبيرة للمس
+	side_panel = PanelContainer.new()
+	side_panel.name = "SidePanel"
+	side_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
+	side_panel.offset_left = -84
+	side_panel.offset_right = -6
+	side_panel.offset_top = -150
+	side_panel.offset_bottom = 150
+	add_child(side_panel)
+	var side := VBoxContainer.new()
+	side.add_theme_constant_override("separation", 6)
+	side_panel.add_child(side)
+	var all_btn := _button("كل\nالجيش", Vector2(70, 56))
+	all_btn.pressed.connect(func() -> void: _input.select_all_army())
+	side.add_child(all_btn)
+	var none_btn := _button("إلغاء\nالتحديد", Vector2(70, 56))
+	none_btn.pressed.connect(func() -> void: _world.clear_selection())
+	side.add_child(none_btn)
+	for g: int in [1, 2, 3]:
+		var gb := _button("%d" % g, Vector2(70, 44))
+		gb.add_theme_font_size_override("font_size", 20)
+		gb.button_down.connect(func() -> void:
+			_hold_group = g
+			_hold_timer = 0.0
+			_hold_done = false)
+		gb.button_up.connect(func() -> void:
+			if _hold_group == g and not _hold_done:
+				_input.select_group(g)
+			_hold_group = 0)
+		side.add_child(gb)
+		group_buttons[g] = gb
+
 	# ---- رسالة عابرة
 	message_label = _label("", 20)
 	message_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
@@ -148,7 +188,7 @@ func _button(text: String, min_size: Vector2) -> Button:
 
 ## هل النقطة فوق عنصر واجهة (لتجاهلها في التحكم بالعالم)؟
 func is_point_over_ui(p: Vector2) -> bool:
-	for c in [top_bar, bottom_panel, game_over_panel]:
+	for c in [top_bar, bottom_panel, side_panel, game_over_panel]:
 		if c.visible and c.get_global_rect().has_point(p):
 			return true
 	return false
@@ -162,11 +202,32 @@ func show_message(text: String) -> void:
 
 func _process(delta: float) -> void:
 	credits_label.text = "نفط %d" % GameState.get_credits(GameConfig.PLAYER_ID)
+	if _credits_flash > 0.0:
+		_credits_flash -= delta
+		credits_label.modulate = Color(1.0, 0.9, 0.5) if int(_credits_flash * 10.0) % 2 == 0 else Color.WHITE
+	else:
+		credits_label.modulate = Color.WHITE
+	for i in range(_floaters.size() - 1, -1, -1):
+		var fl := _floaters[i]
+		fl.t = float(fl.t) + delta
+		var l: Label = fl.label
+		l.position.y += (-40.0 * delta)
+		l.modulate.a = clampf(1.6 - float(fl.t), 0.0, 1.0)
+		if float(fl.t) > 1.6:
+			l.queue_free()
+			_floaters.remove_at(i)
 	var secs := GameState.tick / GameConfig.TICK_RATE
 	time_label.text = "%02d:%02d" % [secs / 60, secs % 60]
 	if _message_timer > 0.0:
 		_message_timer -= delta
 		message_label.modulate.a = clampf(_message_timer, 0.0, 1.0)
+	# ضغط مطوّل على رقم مجموعة = حفظ التحديد الحالي فيها
+	if _hold_group > 0 and not _hold_done:
+		_hold_timer += delta
+		if _hold_timer >= 0.5:
+			_hold_done = true
+			_input.assign_group(_hold_group)
+			_refresh_group_labels()
 	# تحديث دوري خفيف لحالة الأزرار (القائمة/الموارد)
 	_refresh_timer -= delta
 	if _refresh_timer <= 0.0:
@@ -236,14 +297,13 @@ func refresh_actions() -> void:
 			if hq != null:
 				GameState.issue_command(_world.selected_units(), {"type": "move", "pos": hq.pos + Vector3(0, 0, 5)}))
 		actions_box.add_child(retreat)
-		var am := _button("هجوم-تحرك", Vector2(120, 80))
-		am.toggle_mode = true
-		am.button_pressed = _input.attack_move_mode
-		am.toggled.connect(func(on: bool) -> void:
-			_input.attack_move_mode = on
-			if on:
-				show_message("انقر على الأرض للهجوم أثناء التحرك"))
-		actions_box.add_child(am)
+		var mo := _button("تحرك فقط\n(بدون قتال)", Vector2(120, 80))
+		mo.toggle_mode = true
+		mo.button_pressed = _input.move_only_mode
+		mo.toggled.connect(func(on: bool) -> void:
+			_input.move_only_mode = on
+			show_message("النقر على الأرض = تحرك بدون قتال" if on else "النقر على الأرض = تحرك مع قتال تلقائي"))
+		actions_box.add_child(mo)
 		_refresh_info()
 		return
 
@@ -258,7 +318,32 @@ func refresh_actions() -> void:
 	_refresh_info()
 
 
+## رقم طافٍ يوضح كل تغيّر في النفط (‎-تكلفة بالأحمر، +دخل بالأخضر) مع وميض العداد.
+func _on_credits(c: int) -> void:
+	if _last_credits < 0:
+		_last_credits = c
+		return
+	var delta := c - _last_credits
+	_last_credits = c
+	if delta == 0:
+		return
+	var l := _label(("%+d نفط" % delta), 20)
+	l.add_theme_color_override("font_color", Color(1.0, 0.45, 0.4) if delta < 0 else Color(0.5, 1.0, 0.55))
+	l.position = Vector2(credits_label.global_position.x + 8, top_bar.size.y + 6)
+	l.z_index = 5
+	add_child(l)
+	_floaters.append({"label": l, "t": 0.0})
+	_credits_flash = 0.5
+
+
+func _refresh_group_labels() -> void:
+	for g in group_buttons:
+		var n: int = _input.group_size(g)
+		(group_buttons[g] as Button).text = "%d" % g if n == 0 else "%d (%d)" % [g, n]
+
+
 func _refresh_info() -> void:
+	_refresh_group_labels()
 	var building := _world.selected_building()
 	var units := _world.selected_units()
 	if _input.tool == InputController.Tool.BUILD:
@@ -280,11 +365,11 @@ func _refresh_info() -> void:
 		if units.size() == 1:
 			var e: SimEntity = GameState.get_entity(units[0])
 			var d := e.unit_def()
-			info_label.text = "%s  %d/%d\nانقر الأرض للتحرك، أو عدوًا للهجوم، أو حقل نفط للجمع" % [d.display_name, int(e.hp), int(e.max_hp)]
+			info_label.text = "%s  %d/%d\nانقر الأرض للذهاب والقتال، أو عدوًا للهجوم" % [d.display_name, int(e.hp), int(e.max_hp)]
 		else:
-			info_label.text = "%d وحدات مختارة\nانقر الأرض للتحرك، أو عدوًا للهجوم" % units.size()
+			info_label.text = "%d وحدات مختارة\nانقر الأرض للذهاب والقتال" % units.size()
 		return
-	info_label.text = "قائمة البناء\nانقر وحدة/مبنى لاختياره"
+	info_label.text = "قائمة البناء\nنقرة = اختيار، ضغطة مطوّلة + سحب = مربع تحديد"
 
 
 func _on_damage(target_id: int, _amount: float, source_id: int) -> void:

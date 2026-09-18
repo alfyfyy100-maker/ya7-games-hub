@@ -15,7 +15,11 @@ signal tool_changed(tool: int)
 signal message(text: String)
 
 const TAP_MOVE_THRESHOLD_PX: float = 14.0
-const PICK_EXTRA_PX: float = 12.0
+const PICK_EXTRA_PX: float = 20.0
+## ضغطة مطوّلة (ثوانٍ) تبدأ مربع تحديد بدون تبديل وضع السحب.
+const LONG_PRESS_SEC: float = 0.35
+## نقرتان متتاليتان على وحدة (ثوانٍ) = اختيار كل الوحدات من نوعها الظاهرة على الشاشة.
+const DOUBLE_TAP_SEC: float = 0.4
 
 @export var camera_rig_path: NodePath
 @export var world_view_path: NodePath
@@ -25,6 +29,10 @@ const PICK_EXTRA_PX: float = 12.0
 var drag_mode: int = DragMode.PAN
 var tool: int = Tool.NONE
 var attack_move_mode: bool = false
+## افتراضيًا النقر على الأرض بوحدات مسلحة = تحرك مع قتال؛ هذا الخيار يجعله تحركًا فقط.
+var move_only_mode: bool = false
+## مجموعات تحكم: رقم -> معرّفات
+var groups: Dictionary = {}
 var build_def_id: StringName = &""
 
 var _rig: CameraRig
@@ -45,6 +53,12 @@ var _pinch_angle: float = 0.0
 var _pinch_center: Vector2 = Vector2.ZERO
 var _middle_drag: bool = false
 var _last_pointer: Vector2 = Vector2.ZERO
+
+var _press_time: float = 0.0
+var _long_press_fired: bool = false
+var _last_tap_time: float = -10.0
+var _last_tap_entity: int = -1
+var _clock: float = 0.0
 
 var _ghost: Node3D
 var _ghost_cell: Vector2i = Vector2i(-1, -1)
@@ -105,6 +119,14 @@ func _unhandled_input(event: InputEvent) -> void:
 				_world.clear_selection()
 		elif event.keycode == KEY_TAB:
 			toggle_drag_mode()
+		elif event.keycode == KEY_A and event.ctrl_pressed:
+			select_all_army()
+		elif event.keycode >= KEY_1 and event.keycode <= KEY_3:
+			var g: int = event.keycode - KEY_1 + 1
+			if event.ctrl_pressed:
+				assign_group(g)
+			else:
+				select_group(g)
 
 
 func _on_touch(ev: InputEventScreenTouch) -> void:
@@ -118,6 +140,8 @@ func _on_touch(ev: InputEventScreenTouch) -> void:
 			_primary_moved = false
 			_primary_over_ui = _hud.is_point_over_ui(ev.position)
 			_box_active = false
+			_press_time = 0.0
+			_long_press_fired = false
 		elif _touches.size() == 2:
 			# إصبع ثانٍ: نلغي التحديد/السحب الأحادي ونبدأ pinch
 			_end_box(false)
@@ -189,6 +213,14 @@ func _on_mouse_button(ev: InputEventMouseButton) -> void:
 
 
 func _process(delta: float) -> void:
+	_clock += delta
+	# ضغطة مطوّلة بلا حركة = بدء مربع تحديد
+	if _primary >= 0 and not _primary_moved and not _primary_over_ui and not _box_active and tool == Tool.NONE and not _pinch_active:
+		_press_time += delta
+		if _press_time >= LONG_PRESS_SEC and not _long_press_fired:
+			_long_press_fired = true
+			_box_active = true
+			_overlay.set_selection_box(Rect2(_primary_start, Vector2.ZERO))
 	# لوحة مفاتيح اختيارية (ليست الطريقة الوحيدة للتحكم)
 	var dir := Vector2.ZERO
 	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
@@ -224,8 +256,28 @@ func _on_tap(screen_pos: Vector2) -> void:
 			return
 	var hit := pick_entity(screen_pos)
 	if hit != null and hit.owner_id == GameConfig.PLAYER_ID:
-		_world.set_selection([hit.id])
+		var is_double := hit.id == _last_tap_entity and (_clock - _last_tap_time) <= DOUBLE_TAP_SEC
+		_last_tap_entity = hit.id
+		_last_tap_time = _clock
+		if hit.is_unit():
+			if is_double:
+				select_same_type_on_screen(hit)
+				return
+			var current := _world.selected_units()
+			if current.is_empty() or _world.selected_building() != null:
+				_world.set_selection([hit.id])
+			elif current.has(hit.id):
+				# نقر وحدة مختارة أصلًا = إزالتها من التحديد
+				current.erase(hit.id)
+				_world.set_selection(current)
+			else:
+				# نقر وحدة أخرى = إضافتها للتحديد
+				current.append(hit.id)
+				_world.set_selection(current)
+		else:
+			_world.set_selection([hit.id])
 		return
+	_last_tap_entity = -1
 	var units := _world.selected_units()
 	if not units.is_empty():
 		_command_at(screen_pos, hit)
@@ -247,10 +299,79 @@ func _command_at(screen_pos: Vector2, hit: SimEntity = null) -> void:
 			GameState.issue_command(units, {"type": "attack", "target": hit.id})
 			return
 	var ground := _rig.screen_to_ground(screen_pos)
-	var type := "attack_move" if attack_move_mode else "move"
+	# الافتراضي للوحدات المسلحة: تحرك مع قتال (attack_move)؛ "تحرك فقط" عند تفعيل الخيار
+	var type := "move" if move_only_mode else "attack_move"
+	if attack_move_mode:
+		type = "attack_move"
 	GameState.issue_command(units, {"type": type, "pos": ground})
 	attack_move_mode = false
-	_overlay.flash_marker(ground, Color(0.4, 1.0, 0.4) if type == "move" else Color(1.0, 0.4, 0.3))
+	_overlay.flash_marker(ground, Color(0.4, 1.0, 0.4) if type == "move" else Color(1.0, 0.6, 0.3))
+
+
+# ------------------------------------------------------------------ اختصارات الاختيار
+
+func _own_armed_units() -> Array[int]:
+	var out: Array[int] = []
+	for e: SimEntity in GameState.entities_of(GameConfig.PLAYER_ID, SimEntity.Kind.UNIT):
+		var d := e.unit_def()
+		if d != null and d.has_weapon():
+			out.append(e.id)
+	return out
+
+
+func select_all_army() -> void:
+	var ids := _own_armed_units()
+	if ids.is_empty():
+		message.emit("لا توجد وحدات قتالية")
+		return
+	_world.set_selection(ids)
+	message.emit("تم اختيار كل الجيش (%d)" % ids.size())
+
+
+func select_same_type_on_screen(sample: SimEntity) -> void:
+	var cam := _rig.camera
+	var vp := get_viewport().get_visible_rect()
+	var ids: Array[int] = []
+	for e: SimEntity in GameState.entities_of(GameConfig.PLAYER_ID, SimEntity.Kind.UNIT):
+		if e.def_id != sample.def_id:
+			continue
+		var sp := cam.unproject_position(e.pos)
+		if vp.has_point(sp):
+			ids.append(e.id)
+	_world.set_selection(ids)
+	message.emit("تم اختيار %d من نوع %s" % [ids.size(), sample.unit_def().display_name])
+
+
+func assign_group(g: int) -> void:
+	var ids := _world.selected_units()
+	if ids.is_empty():
+		message.emit("اختر وحدات أولًا ثم اضغط مطوّلًا على رقم المجموعة")
+		return
+	groups[g] = ids.duplicate()
+	message.emit("حُفظت المجموعة %d (%d وحدات)" % [g, ids.size()])
+
+
+func select_group(g: int) -> void:
+	var ids: Array = groups.get(g, [])
+	var alive: Array[int] = []
+	for id in ids:
+		var e: SimEntity = GameState.get_entity(int(id))
+		if e != null and e.alive:
+			alive.append(int(id))
+	groups[g] = alive
+	if alive.is_empty():
+		message.emit("المجموعة %d فارغة: اختر وحدات واضغط مطوّلًا على الرقم لحفظها" % g)
+		return
+	_world.set_selection(alive)
+
+
+func group_size(g: int) -> int:
+	var n := 0
+	for id in groups.get(g, []):
+		var e: SimEntity = GameState.get_entity(int(id))
+		if e != null and e.alive:
+			n += 1
+	return n
 
 
 ## يختار الكيان الأقرب لموضع الشاشة (بالحجم الظاهري على الشاشة).
