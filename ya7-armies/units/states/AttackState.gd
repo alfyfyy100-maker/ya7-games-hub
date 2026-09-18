@@ -37,6 +37,13 @@ func tick(e: SimEntity, gs: Node) -> StringName:
 			e.cooldown = def.fire_cooldown_ticks
 			e.last_fire_tick = gs.tick
 		return name
+	# اشتباك تلقائي: لا ننجرّ بعيدًا عن موقع الحراسة (leash)
+	if bool(e.order.get("auto", false)) and e.data.has("guard_pos"):
+		var leash := def.aggro_range * 1.6 + 8.0
+		if Locomotion.flat_distance(e.pos, e.data.guard_pos) > leash:
+			e.resume_order = {}
+			e.order = {"type": "move", "pos": e.data.guard_pos, "auto": true}
+			return &"move"
 	# مطاردة: إعادة حساب المسار دوريًا
 	if e.path.is_empty() or (e.state_ticks % GameConfig.REPATH_INTERVAL) == 0:
 		Locomotion.request_path(e, gs, target.pos)

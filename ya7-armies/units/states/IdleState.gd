@@ -9,6 +9,9 @@ func _init() -> void:
 func enter(e: SimEntity, _gs: Node) -> void:
 	e.path = PackedVector3Array()
 	e.path_index = 0
+	# موقع الحراسة: حيث توقفت الوحدة بلا أمر (تعود إليه بعد الاشتباك التلقائي)
+	if e.order.is_empty() and not e.data.has("guard_pos"):
+		e.data.guard_pos = e.pos
 
 
 func tick(e: SimEntity, gs: Node) -> StringName:
@@ -30,6 +33,14 @@ func tick(e: SimEntity, gs: Node) -> StringName:
 	if def.has_weapon() and (e.state_ticks % GameConfig.SCAN_INTERVAL) == 0:
 		var enemy: SimEntity = gs.find_nearest_enemy(e, def.aggro_range)
 		if enemy != null:
+			if not e.data.has("guard_pos"):
+				e.data.guard_pos = e.pos
 			e.order = {"type": "attack", "target": enemy.id, "auto": true}
 			return &"attack"
+		# العودة إلى موقع الحراسة بعد انتهاء الاشتباك
+		if e.data.has("guard_pos"):
+			var gp: Vector3 = e.data.guard_pos
+			if Locomotion.flat_distance(e.pos, gp) > 3.0:
+				e.order = {"type": "move", "pos": gp, "auto": true}
+				return &"move"
 	return name

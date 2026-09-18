@@ -50,10 +50,17 @@ func _separate(gs: Node, ids: Array) -> void:
 			var nx := dx / d
 			var nz := dz / d
 			# الوحدة المتوقفة تُزاح أقل حتى لا تنجرف عن موقعها
-			var wa := 0.35 if a.state == &"idle" else 0.65
-			var wb := 0.35 if b.state == &"idle" else 0.65
-			_nudge(gs, a, -nx * push * wa * 2.0, -nz * push * wa * 2.0)
-			_nudge(gs, b, nx * push * wb * 2.0, nz * push * wb * 2.0)
+			var a_moving := a.state != &"idle"
+			var b_moving := b.state != &"idle"
+			var wa := 0.65 if a_moving else 0.35
+			var wb := 0.65 if b_moving else 0.35
+			# انزلاق جانبي حتميّ (حسب المعرّف) يمنع التجمد وجهًا لوجه
+			var side := 1.0 if (a.id + b.id) % 2 == 0 else -1.0
+			var tx := -nz * side
+			var tz := nx * side
+			var slide := push * 0.9 if (a_moving and b_moving) else push * 0.3
+			_nudge(gs, a, (-nx * push + tx * slide) * wa * 2.0, (-nz * push + tz * slide) * wa * 2.0)
+			_nudge(gs, b, (nx * push - tx * slide) * wb * 2.0, (nz * push - tz * slide) * wb * 2.0)
 
 
 func _nudge(gs: Node, e: SimEntity, dx: float, dz: float) -> void:

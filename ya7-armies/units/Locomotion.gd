@@ -4,6 +4,8 @@ extends RefCounted
 ## يعمل على بيانات SimEntity فقط (بدون نودات). كل الحركة بالفريم الثابت.
 
 const ARRIVE_EPS: float = 0.15
+## عدد الفريمات بلا تقدم قبل اعتبار الوحدة عالقة.
+const STUCK_TICKS: int = 12
 
 
 ## يطلب مسارًا جديدًا إلى نقطة عالمية. يرجّع false لو لم يوجد مسار.
@@ -19,6 +21,27 @@ static func step(e: SimEntity, gs: Node) -> bool:
 		return true
 	var def := e.unit_def()
 	var remaining := def.speed_per_tick() if def != null else 0.1
+	# كشف العالق: لو لم تتقدم الوحدة فعليًا (بعد التباعد) لعدة فريمات نعيد المسار مع خطوة جانبية
+	var last: Vector3 = e.data.get("step_last_pos", e.pos)
+	if flat_distance(last, e.pos) < remaining * 0.25:
+		e.data.stuck_ticks = int(e.data.get("stuck_ticks", 0)) + 1
+	else:
+		e.data.stuck_ticks = 0
+	if int(e.data.stuck_ticks) >= STUCK_TICKS:
+		e.data.stuck_ticks = 0
+		var goal := e.path[e.path.size() - 1]
+		var side := 1.0 if RNG.chance(0.5) else -1.0
+		var wp0 := e.path[e.path_index]
+		var fwd := Vector3(wp0.x - e.pos.x, 0.0, wp0.z - e.pos.z).normalized()
+		var sidestep := Vector3(-fwd.z, 0.0, fwd.x) * side * 1.2
+		var np: Vector3 = gs.map.clamp_world(e.pos + sidestep)
+		if gs.nav.is_walkable(gs.map.world_to_cell(np)):
+			e.pos.x = np.x
+			e.pos.z = np.z
+		request_path(e, gs, goal)
+		if e.path.is_empty():
+			e.data.step_last_pos = e.pos
+			return true
 	while remaining > 0.0 and e.path_index < e.path.size():
 		var wp := e.path[e.path_index]
 		var to := Vector3(wp.x - e.pos.x, 0.0, wp.z - e.pos.z)
@@ -35,6 +58,7 @@ static func step(e: SimEntity, gs: Node) -> bool:
 		if move >= dist - ARRIVE_EPS:
 			e.path_index += 1
 	e.pos.y = gs.map.height_at_world(e.pos.x, e.pos.z)
+	e.data.step_last_pos = e.pos
 	return e.path_index >= e.path.size()
 
 

@@ -19,7 +19,7 @@ func tick(e: SimEntity, gs: Node) -> StringName:
 		return state_for_order(e) if not e.order.is_empty() else &"idle"
 	if e.order.is_empty():
 		return &"idle"
-	if String(e.order.get("type", "")) == "attack_move":
+	if String(e.order.get("type", "")) == "attack_move" or (bool(e.order.get("auto", false)) and not bool(e.order.get("flee", false))):
 		var def := e.unit_def()
 		if def != null and def.has_weapon() and (e.state_ticks % GameConfig.SCAN_INTERVAL) == 0:
 			var enemy: SimEntity = gs.find_nearest_enemy(e, def.aggro_range)

@@ -26,6 +26,7 @@ const CombatSystem := preload("res://systems/combat/CombatSystem.gd")
 const EconomySystem := preload("res://systems/economy/EconomySystem.gd")
 const AISystem := preload("res://systems/ai/SimpleAI.gd")
 const VictorySystem := preload("res://systems/simulation/VictorySystem.gd")
+const DefenseSystem := preload("res://systems/combat/DefenseSystem.gd")
 
 var tick: int = 0
 var running: bool = false
@@ -41,6 +42,8 @@ var _next_id: int = 1
 var _systems: Array = []
 ## سجل الأوامر بالفريم (للتشخيص والإعادة/الشبكة لاحقًا).
 var command_log: Array = []
+## أحداث تهديد (من apply_damage) يعالجها DefenseSystem في نفس الفريم.
+var threat_events: Array = []
 
 
 # ------------------------------------------------------------------ دورة الحياة
@@ -61,6 +64,7 @@ func new_game(seed_value: int) -> void:
 		ProductionSystem.new(),
 		UnitSystem.new(),
 		CombatSystem.new(),
+		DefenseSystem.new(),
 		EconomySystem.new(),
 		AISystem.new(),
 		VictorySystem.new(),
@@ -83,6 +87,7 @@ func reset() -> void:
 	winner_id = 0
 	tick = 0
 	command_log.clear()
+	threat_events.clear()
 	var ids := entities.keys()
 	for id in ids:
 		remove_entity(id)
@@ -271,6 +276,8 @@ func apply_damage(target_id: int, amount: float, source_id: int) -> void:
 		return
 	t.hp -= amount
 	t.last_hit_tick = tick
+	t.data.last_attacker = source_id
+	threat_events.append({"target": target_id, "source": source_id})
 	damage_dealt.emit(target_id, amount, source_id)
 	if t.hp <= 0.0:
 		kill_entity(target_id)
@@ -314,12 +321,16 @@ func issue_command(ids: Array, cmd: Dictionary) -> void:
 			"stop":
 				e.set_order({})
 			"move", "attack_move":
-				# أمر يدوي للحصّادة يلغي عودتها التلقائية للجمع (تطيع اللاعب)
-				e.data.erase("resource_id")
+				if not cmd.get("auto", false):
+					# أمر يدوي للحصّادة يلغي عودتها التلقائية للجمع (تطيع اللاعب)
+					e.data.erase("resource_id")
+					e.data.erase("guard_pos")
 				moving_ids.append(id)
 			"attack":
 				var def := e.unit_def()
 				if def != null and def.has_weapon():
+					if not cmd.get("auto", false):
+						e.data.erase("guard_pos")
 					e.set_order(cmd)
 				else:
 					# وحدة بلا سلاح تتحرك للهدف بدلًا من الهجوم
@@ -429,9 +440,32 @@ func is_enemy(a: SimEntity, b: SimEntity) -> bool:
 	return a.owner_id != b.owner_id and a.owner_id != 0 and b.owner_id != 0
 
 
+## أقرب عدو مع أولوية للتهديدات: وحدات مسلحة أولًا، ثم حصّادات، ثم مبانٍ (بعقوبة مسافة).
 func find_nearest_enemy(e: SimEntity, max_dist: float) -> SimEntity:
-	return find_nearest(e.pos, func(o: SimEntity) -> bool:
-		return o.alive and not o.is_resource() and is_enemy(e, o), max_dist)
+	var best: SimEntity = null
+	var best_score := INF
+	for o: SimEntity in entities.values():
+		if not o.alive or o.is_resource() or not is_enemy(e, o):
+			continue
+		var d := Locomotion.flat_distance(e.pos, o.pos)
+		if o.is_building():
+			d = Locomotion.distance_to_entity(e.pos, o)
+		if d > max_dist:
+			continue
+		var score := d
+		if o.is_building():
+			score += 8.0
+		elif o.is_unit():
+			var od := o.unit_def()
+			if od == null or not od.has_weapon():
+				score += 5.0
+			# من يهاجمنا الآن له الأولوية القصوى
+			if int(e.data.get("last_attacker", -1)) == o.id and tick - e.last_hit_tick < 60:
+				score -= 6.0
+		if score < best_score:
+			best_score = score
+			best = o
+	return best
 
 
 func find_enemy_hq(owner_id: int) -> SimEntity:

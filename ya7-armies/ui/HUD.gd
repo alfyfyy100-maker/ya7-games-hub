@@ -26,6 +26,7 @@ var game_over_panel: PanelContainer
 var game_over_label: Label
 
 var _message_timer: float = 0.0
+var _alert_tick: int = -100000
 var _refresh_timer: float = 0.0
 var _seen_building_id: int = -1
 var _last_credits: int = -1
@@ -45,6 +46,7 @@ func _ready() -> void:
 		if pid == GameConfig.PLAYER_ID:
 			refresh_actions())
 	GameState.game_over.connect(_on_game_over)
+	GameState.damage_dealt.connect(_on_damage)
 	GameState.match_started.connect(func() -> void:
 		game_over_panel.visible = false
 		refresh_actions())
@@ -224,6 +226,16 @@ func refresh_actions() -> void:
 		var stop := _button("توقف", Vector2(100, 80))
 		stop.pressed.connect(func() -> void: GameState.issue_command(_world.selected_units(), {"type": "stop"}))
 		actions_box.add_child(stop)
+		var retreat := _button("تراجع\nللقاعدة", Vector2(100, 80))
+		retreat.pressed.connect(func() -> void:
+			var hq: SimEntity = null
+			for b: SimEntity in GameState.entities_of(GameConfig.PLAYER_ID, SimEntity.Kind.BUILDING):
+				var d := b.building_def()
+				if d != null and d.is_hq:
+					hq = b
+			if hq != null:
+				GameState.issue_command(_world.selected_units(), {"type": "move", "pos": hq.pos + Vector3(0, 0, 5)}))
+		actions_box.add_child(retreat)
 		var am := _button("هجوم-تحرك", Vector2(120, 80))
 		am.toggle_mode = true
 		am.button_pressed = _input.attack_move_mode
@@ -273,6 +285,16 @@ func _refresh_info() -> void:
 			info_label.text = "%d وحدات مختارة\nانقر الأرض للتحرك، أو عدوًا للهجوم" % units.size()
 		return
 	info_label.text = "قائمة البناء\nانقر وحدة/مبنى لاختياره"
+
+
+func _on_damage(target_id: int, _amount: float, source_id: int) -> void:
+	var t: SimEntity = GameState.get_entity(target_id)
+	if t == null or t.owner_id != GameConfig.PLAYER_ID:
+		return
+	if GameState.tick - _alert_tick < GameConfig.TICK_RATE * 8:
+		return
+	_alert_tick = GameState.tick
+	show_message("قاعدتك تتعرض للهجوم! جنودك يدافعون تلقائيًا")
 
 
 func _on_game_over(winner: int) -> void:
